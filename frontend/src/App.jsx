@@ -10,7 +10,13 @@ function App() {
   const wsRef = useRef(null);
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws/simulation');
+    // Dynamic WebSocket URL
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/ws/simulation`;
+
+    console.log(`Connecting to WebSocket: ${wsUrl}`);
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
