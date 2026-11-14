@@ -47,3 +47,5 @@ frontend/.env.production.local
 
 # Project Specific
 *.log
+training_log.csv
+.pytest_cache/

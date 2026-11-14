@@ -1,45 +1,51 @@
-from fastapi import FastAPI, WebSocket
-from fastapi.middleware.cors import CORSMiddleware
-import sys
 import os
+import sys
+from pathlib import Path
 
-# Add current directory to sys.path to allow imports from backend folder
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from simulation import Simulation
-
+from fastapi import FastAPI, WebSocket
 from fastapi.staticfiles import StaticFiles
 
-# ... existing imports ...
+# Allow `uvicorn backend.main:app` from the project root as well as running from backend/.
+BACKEND_DIR = Path(__file__).resolve().parent
+ROOT_DIR = BACKEND_DIR.parent
+sys.path.append(str(BACKEND_DIR))
 
-app = FastAPI()
+from agent import QLearningAgent  # noqa: E402
+from simulation import Simulation  # noqa: E402
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+MODEL_PATH = Path(os.environ.get("TRAFFIC_MODEL", ROOT_DIR / "q_table.npz"))
+STATIC_DIR = ROOT_DIR / "frontend" / "dist"
 
-simulation = Simulation(model_path="q_table.pkl")
+
+def load_agent():
+    agent = QLearningAgent()
+    try:
+        agent.load(MODEL_PATH)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"Warning: no usable model at {MODEL_PATH} ({exc}). "
+              "Run `python backend/train.py`; serving baseline controllers only.")
+        return None
+    print(f"Loaded trained model from {MODEL_PATH}.")
+    return agent
+
+
+app = FastAPI(title="Traffic AI")
+agent = load_agent()  # read-only at serve time, shared by all sessions
+
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok", "model_loaded": agent is not None}
+
 
 @app.websocket("/ws/simulation")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    print("Client connected")
-    try:
-        await simulation.run_loop(websocket)
-    except Exception as e:
-        print(f"Connection closed: {e}")
-    finally:
-        print("Client disconnected")
+    await Simulation(agent).run(websocket)
 
-# Serve React Static Files (Production)
-# Mount this LAST so it doesn't override API routes
-if os.path.exists("../frontend/dist"):
-    app.mount("/", StaticFiles(directory="../frontend/dist", html=True), name="static")
-elif os.path.exists("frontend/dist"):
-    app.mount("/", StaticFiles(directory="frontend/dist", html=True), name="static")
+
+# Serve the built React app (production). Mounted last so it doesn't shadow the API.
+if STATIC_DIR.exists():
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 else:
     print("Warning: frontend/dist not found. Static files will not be served.")

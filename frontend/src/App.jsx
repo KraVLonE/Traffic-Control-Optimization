@@ -27,6 +27,7 @@ function App() {
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       setGameState(data);
+      setIsPaused(data.paused);
     };
 
     ws.onclose = () => {
@@ -63,6 +64,14 @@ function App() {
     sendCommand('set_density', value);
   };
 
+  const handleControllerChange = (value) => {
+    sendCommand('set_controller', value);
+  };
+
+  const handleSpeedChange = (value) => {
+    sendCommand('set_speed', value);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-8 font-sans text-slate-800">
       <div className="max-w-7xl w-full flex flex-col gap-8">
@@ -70,10 +79,10 @@ function App() {
         {/* Header */}
         <div className="flex flex-col items-center text-center space-y-2 mb-4">
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-            Traffic Optimization Dashboard
+            Traffic Optimization Simulation
           </h1>
           <p className="text-slate-500 text-sm font-medium">
-            Reinforcement Learning Agent • Q-Learning Model
+            Reinforcement Learning Agent • Q-Learning vs. Classic Controllers
           </p>
         </div>
 
@@ -102,6 +111,12 @@ function App() {
               onStop={handleStop}
               onReset={handleReset}
               onDensityChange={handleDensityChange}
+              onControllerChange={handleControllerChange}
+              onSpeedChange={handleSpeedChange}
+              controllers={gameState?.controllers ?? []}
+              controller={gameState?.controller ?? ''}
+              density={gameState?.density ?? 0.5}
+              speed={gameState?.speed ?? 1}
               isPaused={isPaused}
             />
             <MetricsPanel gameState={gameState} />

@@ -1,6 +1,4 @@
 numpy
 gymnasium
 fastapi
-uvicorn
-websockets
-matplotlib
+uvicorn[standard]
