@@ -1,0 +1,18 @@
+# Production on the Oracle server, behind the shared Traefik proxy (network: traefik-public).
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    networks:
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.traffic-ai.rule=Host(`traffic-ai.kravlone.xyz`)"
+      - "traefik.http.routers.traffic-ai.entrypoints=websecure"
+      - "traefik.http.routers.traffic-ai.tls.certresolver=letsencrypt"
+      - "traefik.http.services.traffic-ai.loadbalancer.server.port=8000"
+
+networks:
+  traefik-public:
+    external: true
